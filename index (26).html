@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://aframe.io https://cdn.jsdelivr.net; img-src 'self' data: blob:; child-src 'self' blob:; worker-src 'self' blob:;">
+
+    <title>AR Video Project</title>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #ui-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 18px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <button id="startButton">ЗАПУСТИТЬ AR</button>
+    </div>
+
+    <a-scene 
+        mindar-image="imageTargetSrc: ./targets.mind; maxTrack: 2; uiScanning: #ui-overlay;" 
+        color-space="sRGB" 
+        renderer="colorManagement: true, physicallyCorrectLights" 
+        vr-mode-ui="enabled: false" 
+        device-orientation-permission-ui="enabled: false">
+      
+        <a-assets>
+            <video id="video-ocean" 
+                   src="23009-332257760_medium.mp4" 
+                   preload="auto" loop="true" crossorigin="anonymous" muted playsinline>
+            </video>
+            
+            <video id="video-waves" 
+                   src="10331-224234476.mp4" 
+                   preload="auto" loop="true" crossorigin="anonymous" muted playsinline>
+            </video>
+        </a-assets>
+
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+        <a-entity mindar-image-target="targetIndex: 0" video-handler="#video-ocean">
+            <a-video src="#video-ocean" width="1" height="0.6" position="0 0 0"></a-video>
+        </a-entity>
+
+        <a-entity mindar-image-target="targetIndex: 1" video-handler="#video-waves">
+            <a-video src="#video-waves" width="1" height="0.6" position="0 0 0"></a-video>
+        </a-entity>
+
+    </a-scene>
+
+    <script>
+        // Улучшенный компонент управления видео
+        AFRAME.registerComponent('video-handler', {
+            schema: { type: 'selector' },
+            init: function () {
+                const video = this.data;
+                
+                // Когда маркер найден
+                this.el.addEventListener("targetFound", () => {
+                    console.log("Маркер найден, запускаю видео");
+                    video.muted = false; // Пытаемся включить звук (сработает, если был клик по экрану)
+                    video.play().catch(err => {
+                        console.warn("Автоплей со звуком заблокирован, играю без звука", err);
+                        video.muted = true;
+                        video.play();
+                    });
+                });
+
+                // Когда маркер потерян
+                this.el.addEventListener("targetLost", () => {
+                    console.log("Маркер потерян, пауза");
+                    video.pause();
+                });
+            }
+        });
+
+        const startButton = document.querySelector('#startButton');
+        const overlay = document.querySelector('#ui-overlay');
+        const videos = document.querySelectorAll('video');
+
+        startButton.addEventListener('click', () => {
+            // "Размораживаем" видео движком браузера
+            videos.forEach(v => {
+                v.play().then(() => {
+                    v.pause();
+                    v.muted = false; // Теперь браузер разрешит звук
+                }).catch(e => console.error("Ошибка инициализации:", e));
+            });
+            overlay.style.display = 'none'; 
+        });
+    </script>
+</body>
+</html>
